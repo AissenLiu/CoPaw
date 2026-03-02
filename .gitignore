@@ -24,6 +24,10 @@ website/.vite/
 website/tsconfig.tsbuildinfo
 website/dist/
 
+# desktop (tauri)
+desktop-tauri/dist/
+desktop-tauri/src-tauri/target/
+
 # misc
 .env
 .env.*
