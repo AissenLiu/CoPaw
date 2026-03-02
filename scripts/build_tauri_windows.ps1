@@ -45,12 +45,14 @@ if (-not (Test-Path $PortableRoot)) {
 $DesktopDir = Join-Path $RepoRoot "desktop-tauri"
 Ensure-Command "npm"
 Ensure-Command "python"
+Ensure-Command "cargo"
 
 Write-Info "Building Tauri desktop binary..."
 Push-Location $DesktopDir
 try {
     npm install
-    npm run tauri:build
+    npm run build
+    cargo build --manifest-path src-tauri/Cargo.toml --release
 }
 finally {
     Pop-Location

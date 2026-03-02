@@ -23,7 +23,8 @@ npm run tauri:dev
 ```bash
 cd desktop-tauri
 npm install
-npm run tauri:build
+npm run build
+cargo build --manifest-path src-tauri/Cargo.toml --release
 ```
 
 The output binary is under `desktop-tauri/src-tauri/target/release/`.
