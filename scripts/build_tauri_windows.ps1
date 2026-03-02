@@ -47,20 +47,105 @@ Ensure-Command "npm"
 Ensure-Command "python"
 Ensure-Command "cargo"
 
+$IconPath = Join-Path $DesktopDir "src-tauri/icons/icon.ico"
+if (-not (Test-Path $IconPath)) {
+    Write-Info "Tauri icon not found, generating fallback icon..."
+    $env:COPAW_ICON_PATH = $IconPath
+    $IconGenCode = @'
+import os
+import struct
+from pathlib import Path
+
+out = Path(os.environ["COPAW_ICON_PATH"])
+out.parent.mkdir(parents=True, exist_ok=True)
+
+w = h = 32
+header = struct.pack("<HHH", 0, 1, 1)
+dib_header = struct.pack(
+    "<IIIHHIIIIII",
+    40,
+    w,
+    h * 2,
+    1,
+    32,
+    0,
+    w * h * 4,
+    0,
+    0,
+    0,
+    0,
+)
+pixel = bytes((0xD2, 0x7A, 0x16, 0xFF))
+xor_bitmap = pixel * (w * h)
+and_row_bytes = ((w + 31) // 32) * 4
+and_mask = bytes(and_row_bytes * h)
+image_data = dib_header + xor_bitmap + and_mask
+entry = struct.pack(
+    "<BBBBHHII",
+    w,
+    h,
+    0,
+    0,
+    1,
+    32,
+    len(image_data),
+    6 + 16,
+)
+out.write_bytes(header + entry + image_data)
+'@
+    & (Get-Command python).Source -c $IconGenCode
+    if ($LASTEXITCODE -ne 0 -or -not (Test-Path $IconPath)) {
+        throw "Failed to generate fallback icon: $IconPath"
+    }
+}
+
 Write-Info "Building Tauri desktop binary..."
 Push-Location $DesktopDir
 try {
     npm install
+    if ($LASTEXITCODE -ne 0) {
+        throw "npm install failed with exit code $LASTEXITCODE"
+    }
     npm run build
-    cargo build --manifest-path src-tauri/Cargo.toml --release
+    if ($LASTEXITCODE -ne 0) {
+        throw "npm run build failed with exit code $LASTEXITCODE"
+    }
+    cargo build --manifest-path src-tauri/Cargo.toml --release --bin copaw-desktop
+    if ($LASTEXITCODE -ne 0) {
+        throw "cargo build failed with exit code $LASTEXITCODE"
+    }
 }
 finally {
     Pop-Location
 }
 
-$DesktopExe = Join-Path $DesktopDir "src-tauri/target/release/copaw-desktop.exe"
-if (-not (Test-Path $DesktopExe)) {
-    throw "Desktop executable not found: $DesktopExe"
+$ExeCandidates = @(
+    (Join-Path $DesktopDir "src-tauri/target/release/copaw-desktop.exe"),
+    (Join-Path $DesktopDir "src-tauri/target/release/copaw_desktop.exe"),
+    (Join-Path $DesktopDir "target/release/copaw-desktop.exe"),
+    (Join-Path $DesktopDir "target/release/copaw_desktop.exe")
+)
+
+$DesktopExe = $null
+foreach ($candidate in $ExeCandidates) {
+    if (Test-Path $candidate) {
+        $DesktopExe = $candidate
+        break
+    }
+}
+
+if (-not $DesktopExe) {
+    $foundExe = @(
+        Get-ChildItem -Path (Join-Path $DesktopDir "src-tauri/target/release") -Filter "*.exe" -ErrorAction SilentlyContinue |
+            Select-Object -ExpandProperty FullName
+        Get-ChildItem -Path (Join-Path $DesktopDir "target/release") -Filter "*.exe" -ErrorAction SilentlyContinue |
+            Select-Object -ExpandProperty FullName
+    ) | Where-Object { $_ } | Sort-Object -Unique
+
+    if ($foundExe.Count -gt 0) {
+        throw "Desktop executable not found in expected paths. Found exe files: $($foundExe -join '; ')"
+    }
+    throw "Desktop executable not found. Checked: $($ExeCandidates -join '; ')"
 }
 
 $BundleDirName = "CoPaw-Desktop-Windows"
