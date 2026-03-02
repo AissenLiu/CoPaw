@@ -81,7 +81,17 @@ endlocal
 $Launcher | Set-Content -Path (Join-Path $BundleRoot "Start-CoPaw-Desktop.bat") -Encoding ASCII
 
 $env:COPAW_REPO_ROOT = $RepoRoot
-$Version = (& (Get-Command python).Source -c "import os,re,pathlib; p = pathlib.Path(os.environ['COPAW_REPO_ROOT']) / 'src' / 'copaw' / '__version__.py'; text = p.read_text(encoding='utf-8'); print(re.search(r'\"([^\"]+)\"', text).group(1))" 2>$null)
+$VersionCode = @'
+import os
+import pathlib
+import re
+
+p = pathlib.Path(os.environ["COPAW_REPO_ROOT"]) / "src" / "copaw" / "__version__.py"
+text = p.read_text(encoding="utf-8")
+m = re.search(r'"([^"]+)"', text)
+print(m.group(1) if m else "")
+'@
+$Version = (& (Get-Command python).Source -c $VersionCode 2>$null)
 $Version = ($Version | Out-String).Trim()
 if (-not $Version) {
     $Version = "unknown"

@@ -41,7 +41,17 @@ if ($CleanOutput -and (Test-Path $OutputRoot)) {
 New-Item -Path $OutputRoot -ItemType Directory -Force | Out-Null
 
 $env:COPAW_REPO_ROOT = $RepoRoot
-$Version = (& $PythonExe -c "import os,re,pathlib; p = pathlib.Path(os.environ['COPAW_REPO_ROOT']) / 'src' / 'copaw' / '__version__.py'; text = p.read_text(encoding='utf-8'); print(re.search(r'\"([^\"]+)\"', text).group(1))" 2>$null)
+$VersionCode = @'
+import os
+import pathlib
+import re
+
+p = pathlib.Path(os.environ["COPAW_REPO_ROOT"]) / "src" / "copaw" / "__version__.py"
+text = p.read_text(encoding="utf-8")
+m = re.search(r'"([^"]+)"', text)
+print(m.group(1) if m else "")
+'@
+$Version = (& $PythonExe -c $VersionCode 2>$null)
 if (-not $Version) {
     throw "Failed to detect CoPaw version."
 }
