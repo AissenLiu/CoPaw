@@ -35,7 +35,11 @@ powershell -ExecutionPolicy Bypass -File scripts/build_portable_windows.ps1
 
 - Produces `dist/portable-windows/CoPaw-Windows-Portable-<version>.zip`.
 - Target Windows machines only need unzip + double-click `Start-CoPaw.bat`.
-- Includes Python runtime, CoPaw package, dependencies, and launcher scripts.
+- Includes Python runtime, CoPaw package, dependencies, launcher scripts, built-in skills Python deps, and Playwright Chromium browser binaries.
+- Optional flags:
+  - `-SkipSkillDeps`: skip preinstalling built-in skills Python deps.
+  - `-SkipPlaywrightBrowserDownload`: skip pre-downloading Chromium.
+- Some skills still require external tools from system `PATH` (for example LibreOffice, Poppler, Himalaya CLI). See package file: `EXTERNAL-DEPENDENCIES.txt`.
 
 ## Build Windows Tauri desktop package
 

@@ -12,6 +12,7 @@ if not exist "%PYTHON%" (
 
 set "COPAW_WORKING_DIR=%WORKING_DIR%"
 set "COPAW_OPENAPI_DOCS=false"
+set "PLAYWRIGHT_BROWSERS_PATH=%ROOT%runtime\ms-playwright"
 
 if not exist "%WORKING_DIR%\config.json" (
   "%PYTHON%" -m copaw init --defaults --accept-security

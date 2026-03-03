@@ -10,6 +10,7 @@ if not exist "%PYTHON%" (
 )
 
 set "COPAW_WORKING_DIR=%ROOT%working"
+set "PLAYWRIGHT_BROWSERS_PATH=%ROOT%runtime\ms-playwright"
 "%PYTHON%" -m copaw %*
 
 endlocal

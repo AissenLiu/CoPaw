@@ -3,7 +3,9 @@ param(
     [string]$PythonExe = "",
     [switch]$SkipConsoleBuild,
     [switch]$SkipZip,
-    [switch]$CleanOutput
+    [switch]$CleanOutput,
+    [switch]$SkipSkillDeps,
+    [switch]$SkipPlaywrightBrowserDownload
 )
 
 Set-StrictMode -Version Latest
@@ -18,6 +20,13 @@ function Ensure-Command {
     param([string]$Name)
     if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
         throw "Required command not found: $Name"
+    }
+}
+
+function Assert-LastExitCode {
+    param([string]$Step)
+    if ($LASTEXITCODE -ne 0) {
+        throw "$Step failed with exit code $LASTEXITCODE"
     }
 }
 
@@ -67,7 +76,9 @@ if (-not $SkipConsoleBuild) {
     Push-Location $ConsoleDir
     try {
         npm ci
+        Assert-LastExitCode "npm ci"
         npm run build
+        Assert-LastExitCode "npm run build"
     }
     finally {
         Pop-Location
@@ -90,7 +101,9 @@ Write-Info "Building wheel..."
 Push-Location $RepoRoot
 try {
     & $PythonExe -m pip install --upgrade pip build
+    Assert-LastExitCode "python -m pip install --upgrade pip build"
     & $PythonExe -m build --wheel --outdir $WheelOutDir .
+    Assert-LastExitCode "python -m build --wheel"
 }
 finally {
     Pop-Location
@@ -104,6 +117,7 @@ if (-not $Wheel) {
 $BundleDirName = "CoPaw-Windows-Portable"
 $BundleRoot = Join-Path $OutputRoot $BundleDirName
 $RuntimePythonRoot = Join-Path $BundleRoot "runtime/python"
+$PlaywrightBrowsersDir = Join-Path $BundleRoot "runtime/ms-playwright"
 $WorkingDir = Join-Path $BundleRoot "working"
 
 if (Test-Path $BundleRoot) {
@@ -112,6 +126,7 @@ if (Test-Path $BundleRoot) {
 New-Item -Path $BundleRoot -ItemType Directory -Force | Out-Null
 New-Item -Path $WorkingDir -ItemType Directory -Force | Out-Null
 New-Item -Path $RuntimePythonRoot -ItemType Directory -Force | Out-Null
+New-Item -Path $PlaywrightBrowsersDir -ItemType Directory -Force | Out-Null
 
 $PythonHome = Split-Path -Parent $PythonExe
 Write-Info "Copying Python runtime from $PythonHome"
@@ -124,11 +139,37 @@ if (-not (Test-Path $RuntimePythonExe)) {
 
 Write-Info "Installing CoPaw and dependencies into portable runtime..."
 & $RuntimePythonExe -m pip install --upgrade pip setuptools wheel
+Assert-LastExitCode "runtime pip bootstrap install"
 & $RuntimePythonExe -m pip install --no-cache-dir $Wheel.FullName
+Assert-LastExitCode "runtime pip install CoPaw wheel"
+
+if (-not $SkipSkillDeps) {
+    $SkillPythonDeps = @(
+        "defusedxml",
+        "lxml",
+        "openpyxl",
+        "pypdf",
+        "pdfplumber",
+        "pdf2image",
+        "Pillow",
+        "pandas"
+    )
+    Write-Info "Preinstalling built-in skills Python dependencies..."
+    & $RuntimePythonExe -m pip install --no-cache-dir @SkillPythonDeps
+    Assert-LastExitCode "runtime pip install built-in skills dependencies"
+}
+
+if (-not $SkipPlaywrightBrowserDownload) {
+    Write-Info "Installing Playwright Chromium into portable runtime..."
+    $env:PLAYWRIGHT_BROWSERS_PATH = $PlaywrightBrowsersDir
+    & $RuntimePythonExe -m playwright install chromium
+    Assert-LastExitCode "playwright install chromium"
+}
 
 Write-Info "Initializing default working directory..."
 $env:COPAW_WORKING_DIR = $WorkingDir
 & $RuntimePythonExe -m copaw init --defaults --accept-security
+Assert-LastExitCode "copaw init --defaults --accept-security"
 
 Write-Info "Applying offline-safe default config..."
 & $RuntimePythonExe -c @'
@@ -153,6 +194,7 @@ config_path.write_text(
     encoding="utf-8",
 )
 '@
+Assert-LastExitCode "apply offline-safe default config"
 
 $TemplateDir = Join-Path $RepoRoot "scripts/windows-portable"
 Write-Info "Copying Windows launcher scripts..."
@@ -165,9 +207,21 @@ $BuildInfo = @(
     "CoPaw Version: $Version",
     "Build Time (UTC): $(Get-Date -AsUTC -Format 'yyyy-MM-dd HH:mm:ss')",
     "Runtime Python: $($RuntimePythonExe)",
-    "Wheel: $($Wheel.Name)"
+    "Wheel: $($Wheel.Name)",
+    "Playwright Browsers Path: $($PlaywrightBrowsersDir)",
+    "Skill Python Deps Installed: $([bool](-not $SkipSkillDeps))",
+    "Playwright Chromium Installed: $([bool](-not $SkipPlaywrightBrowserDownload))"
 )
 $BuildInfo | Set-Content -Path (Join-Path $BundleRoot "BUILD-INFO.txt") -Encoding UTF8
+
+$ExternalDeps = @(
+    "External tools that may still be required by some built-in skills:",
+    "- LibreOffice (soffice): required by docx/pptx/xlsx advanced workflows",
+    "- Poppler (pdftoppm/pdfimages): recommended for PDF image workflows",
+    "- Himalaya CLI: required by himalaya email skill",
+    "- Optional npm CLIs: docx, pptxgenjs (only for specific generation flows)"
+)
+$ExternalDeps | Set-Content -Path (Join-Path $BundleRoot "EXTERNAL-DEPENDENCIES.txt") -Encoding UTF8
 
 if (-not $SkipZip) {
     $ZipPath = Join-Path $OutputRoot "CoPaw-Windows-Portable-$Version.zip"

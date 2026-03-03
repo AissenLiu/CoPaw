@@ -56,6 +56,15 @@ fn navigate_main_window(app: &AppHandle, target_url: &str) -> Result<(), String>
     Ok(())
 }
 
+fn infer_playwright_browsers_path(python: &Path) -> Option<PathBuf> {
+    let runtime_dir = python.parent()?.parent()?;
+    let runtime_name = runtime_dir.file_name()?.to_string_lossy().to_ascii_lowercase();
+    if runtime_name != "runtime" {
+        return None;
+    }
+    Some(runtime_dir.join("ms-playwright"))
+}
+
 fn dedup_paths(paths: Vec<PathBuf>) -> Vec<PathBuf> {
     let mut out = Vec::new();
     for path in paths {
@@ -223,7 +232,8 @@ fn ensure_backend(
     let (python, working_dir) = resolve_python_and_working(&app)?;
     run_copaw_init(&python, &working_dir)?;
 
-    let child = Command::new(&python)
+    let mut backend_cmd = Command::new(&python);
+    backend_cmd
         .args([
             "-m",
             "copaw",
@@ -234,7 +244,17 @@ fn ensure_backend(
             "8088",
         ])
         .env("COPAW_WORKING_DIR", &working_dir)
-        .env("COPAW_OPENAPI_DOCS", "false")
+        .env("COPAW_OPENAPI_DOCS", "false");
+
+    if std::env::var_os("PLAYWRIGHT_BROWSERS_PATH").is_none() {
+        if let Some(playwright_browsers_path) = infer_playwright_browsers_path(&python) {
+            if playwright_browsers_path.exists() {
+                backend_cmd.env("PLAYWRIGHT_BROWSERS_PATH", playwright_browsers_path);
+            }
+        }
+    }
+
+    let child = backend_cmd
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
