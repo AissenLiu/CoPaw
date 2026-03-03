@@ -1,6 +1,7 @@
 name: Pre-commit Checks
 
-on: [push, pull_request]
+on:
+  workflow_dispatch:
 
 jobs:
   run:
