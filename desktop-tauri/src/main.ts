@@ -28,7 +28,6 @@ async function bootstrap(): Promise<void> {
       setStatus("Connecting to backend...");
     }
     setStatus("Opening console...");
-    window.location.replace(result.url);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     setStatus(`Failed to start CoPaw: ${message}`);

@@ -8,6 +8,7 @@ use std::sync::Mutex;
 use std::thread;
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Manager, State};
+use url::Url;
 
 #[derive(Default)]
 struct BackendState {
@@ -42,6 +43,17 @@ fn wait_for_backend_ready(timeout: Duration) -> bool {
         thread::sleep(Duration::from_millis(500));
     }
     false
+}
+
+fn navigate_main_window(app: &AppHandle, target_url: &str) -> Result<(), String> {
+    let window = app
+        .get_webview_window("main")
+        .ok_or_else(|| "Main window not found".to_string())?;
+    let parsed = Url::parse(target_url).map_err(|err| format!("Invalid URL: {err}"))?;
+    window
+        .navigate(parsed)
+        .map_err(|err| format!("Failed to navigate main window: {err}"))?;
+    Ok(())
 }
 
 fn dedup_paths(paths: Vec<PathBuf>) -> Vec<PathBuf> {
@@ -166,12 +178,16 @@ fn ensure_backend(
     state: State<'_, BackendState>,
 ) -> Result<EnsureBackendResult, String> {
     let url = backend_url();
+    let mut already_running = false;
+    let mut started = false;
 
     if is_backend_running() {
+        already_running = true;
+        navigate_main_window(&app, &url)?;
         return Ok(EnsureBackendResult {
             url,
-            already_running: true,
-            started: false,
+            already_running,
+            started,
         });
     }
 
@@ -189,10 +205,12 @@ fn ensure_backend(
                     if !wait_for_backend_ready(Duration::from_secs(30)) {
                         return Err("Backend process started but did not become ready in time.".to_string());
                     }
+                    started = true;
+                    navigate_main_window(&app, &url)?;
                     return Ok(EnsureBackendResult {
                         url,
-                        already_running: false,
-                        started: true,
+                        already_running,
+                        started,
                     });
                 }
                 Some(_) => {
@@ -234,11 +252,13 @@ fn ensure_backend(
         }
         return Err("Backend startup timed out (30s).".to_string());
     }
+    started = true;
+    navigate_main_window(&app, &url)?;
 
     Ok(EnsureBackendResult {
         url,
-        already_running: false,
-        started: true,
+        already_running,
+        started,
     })
 }
 
