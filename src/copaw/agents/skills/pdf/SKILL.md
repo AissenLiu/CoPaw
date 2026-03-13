@@ -25,7 +25,7 @@ This guide covers essential PDF processing operations using Python libraries and
 
 ## Portable Package Note
 
-- If running from packages built by `scripts/build_portable_windows.ps1` or `scripts/build_tauri_windows.ps1`, built-in Python dependencies are already bundled.
+- If running from packages built by `scripts/build_portable_windows.ps1`, built-in Python dependencies are already bundled.
 - In that packaged mode, do not run extra `pip install` during skill execution unless the user explicitly needs an additional non-default library.
 
 ## Quick Start
