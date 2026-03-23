@@ -23,6 +23,7 @@ from agentscope_runtime.engine.schemas.agent_schemas import (
 
 from ....config.config import DiscordConfig as DiscordChannelConfig
 
+from ..utils import file_url_to_local_path
 from ..base import (
     BaseChannel,
     OnReplySent,
@@ -283,26 +284,22 @@ class DiscordChannel(BaseChannel):
             require_mention=config.require_mention,
         )
 
-    async def _resolve_target(self, to_handle, meta):
+    async def _resolve_target(self, to_handle, _meta):
         """Resolve a Discord Messageable from meta or to_handle."""
-        meta = meta or {}
-        if not meta.get("channel_id") and not meta.get("user_id"):
-            meta.update(self._route_from_handle(to_handle))
-        channel_id = meta.get("channel_id")
-        user_id = meta.get("user_id")
+        route = self._route_from_handle(to_handle)
+        channel_id = route.get("channel_id")
+        user_id = route.get("user_id")
         if channel_id:
-            ch = self._client.get_channel(int(channel_id))
+            cid = int(channel_id)
+            ch = self._client.get_channel(cid)
             if ch is None:
-                ch = await self._client.fetch_channel(
-                    int(channel_id),
-                )
+                ch = await self._client.fetch_channel(cid)
             return ch
         if user_id:
-            user = self._client.get_user(int(user_id))
+            uid = int(user_id)
+            user = self._client.get_user(uid)
             if user is None:
-                user = await self._client.fetch_user(
-                    int(user_id),
-                )
+                user = await self._client.fetch_user(uid)
             return user.dm_channel or await user.create_dm()
         return None
 
@@ -440,9 +437,7 @@ class DiscordChannel(BaseChannel):
         meta: Optional[dict] = None,
     ) -> None:
         """Send a media part as a Discord file attachment."""
-        if not self.enabled or not self._client:
-            return
-        if not self._client.is_ready():
+        if not self.enabled or not self._client or not self._client.is_ready():
             return
         import discord
 
@@ -464,7 +459,14 @@ class DiscordChannel(BaseChannel):
 
         temp_path = None
         if url.startswith("file://"):
-            file = discord.File(url[7:])
+            local_path = file_url_to_local_path(url)
+            if not local_path:
+                logger.warning(
+                    "discord send_media: invalid file URL %s",
+                    url,
+                )
+                return
+            file = discord.File(local_path)
         elif url.startswith(("http://", "https://")):
             async with aiohttp.ClientSession() as session:
                 async with session.get(url) as resp:

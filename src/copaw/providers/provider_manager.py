@@ -9,7 +9,7 @@ from typing import Dict, List
 import logging
 import json
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from agentscope.model import ChatModelBase
 
@@ -19,8 +19,10 @@ from copaw.providers.provider import (
     Provider,
     ProviderInfo,
 )
+from copaw.providers.models import ModelSlotConfig
 from copaw.providers.openai_provider import OpenAIProvider
 from copaw.providers.anthropic_provider import AnthropicProvider
+from copaw.providers.gemini_provider import GeminiProvider
 from copaw.providers.ollama_provider import OllamaProvider
 from copaw.constant import SECRET_DIR
 from copaw.local_models import create_local_chat_model
@@ -85,7 +87,53 @@ AZURE_OPENAI_MODELS: List[ModelInfo] = [
     ModelInfo(id="gpt-4o-mini", name="GPT-4o Mini"),
 ]
 
+MINIMAX_MODELS: List[ModelInfo] = [
+    ModelInfo(id="MiniMax-M2.5", name="MiniMax M2.5"),
+    ModelInfo(id="MiniMax-M2.5-highspeed", name="MiniMax M2.5 Highspeed"),
+    ModelInfo(id="MiniMax-M2.7", name="MiniMax M2.7"),
+    ModelInfo(id="MiniMax-M2.7-highspeed", name="MiniMax M2.7 Highspeed"),
+]
+
+KIMI_MODELS: List[ModelInfo] = [
+    ModelInfo(id="kimi-k2.5", name="Kimi K2.5"),
+    ModelInfo(
+        id="kimi-k2-0905-preview",
+        name="Kimi K2 0905 Preview",
+    ),
+    ModelInfo(
+        id="kimi-k2-0711-preview",
+        name="Kimi K2 0711 Preview",
+    ),
+    ModelInfo(
+        id="kimi-k2-turbo-preview",
+        name="Kimi K2 Turbo Preview",
+    ),
+    ModelInfo(id="kimi-k2-thinking", name="Kimi K2 Thinking"),
+    ModelInfo(
+        id="kimi-k2-thinking-turbo",
+        name="Kimi K2 Thinking Turbo",
+    ),
+]
+
+DEEPSEEK_MODELS: List[ModelInfo] = [
+    ModelInfo(id="deepseek-chat", name="DeepSeek Chat"),
+    ModelInfo(id="deepseek-reasoner", name="DeepSeek Reasoner"),
+]
+
 ANTHROPIC_MODELS: List[ModelInfo] = []
+
+GEMINI_MODELS: List[ModelInfo] = [
+    ModelInfo(id="gemini-3.1-pro-preview", name="Gemini 3.1 Pro Preview"),
+    ModelInfo(id="gemini-3-flash-preview", name="Gemini 3 Flash Preview"),
+    ModelInfo(
+        id="gemini-3.1-flash-lite-preview",
+        name="Gemini 3.1 Flash Lite Preview",
+    ),
+    ModelInfo(id="gemini-2.5-pro", name="Gemini 2.5 Pro"),
+    ModelInfo(id="gemini-2.5-flash", name="Gemini 2.5 Flash"),
+    ModelInfo(id="gemini-2.5-flash-lite", name="Gemini 2.5 Flash Lite"),
+    ModelInfo(id="gemini-2.0-flash", name="Gemini 2.0 Flash"),
+]
 
 PROVIDER_MODELSCOPE = OpenAIProvider(
     id="modelscope",
@@ -111,6 +159,8 @@ PROVIDER_ALIYUN_CODINGPLAN = OpenAIProvider(
     base_url="https://coding.dashscope.aliyuncs.com/v1",
     api_key_prefix="sk-sp",
     models=ALIYUN_CODINGPLAN_MODELS,
+    # This provider doesn't support connection check without model config
+    support_connection_check=False,
     freeze_url=True,
 )
 
@@ -144,6 +194,53 @@ PROVIDER_AZURE_OPENAI = OpenAIProvider(
     models=AZURE_OPENAI_MODELS,
 )
 
+PROVIDER_MINIMAX = AnthropicProvider(
+    id="minimax",
+    name="MiniMax (International)",
+    base_url="https://api.minimax.io/anthropic",
+    models=MINIMAX_MODELS,
+    chat_model="AnthropicChatModel",
+    freeze_url=True,
+)
+
+PROVIDER_MINIMAX_CN = AnthropicProvider(
+    id="minimax-cn",
+    name="MiniMax (China)",
+    base_url="https://api.minimaxi.com/anthropic",
+    models=MINIMAX_MODELS,
+    chat_model="AnthropicChatModel",
+    freeze_url=True,
+    # This provider doesn't support connection check without model config
+    support_connection_check=False,
+)
+
+PROVIDER_KIMI_CN = OpenAIProvider(
+    id="kimi-cn",
+    name="Kimi (China)",
+    base_url="https://api.moonshot.cn/v1",
+    api_key_prefix="",
+    models=KIMI_MODELS,
+    freeze_url=True,
+)
+
+PROVIDER_KIMI_INTL = OpenAIProvider(
+    id="kimi-intl",
+    name="Kimi (International)",
+    base_url="https://api.moonshot.ai/v1",
+    api_key_prefix="",
+    models=KIMI_MODELS,
+    freeze_url=True,
+)
+
+PROVIDER_DEEPSEEK = OpenAIProvider(
+    id="deepseek",
+    name="DeepSeek",
+    base_url="https://api.deepseek.com",
+    api_key_prefix="sk-",
+    models=DEEPSEEK_MODELS,
+    freeze_url=True,
+)
+
 PROVIDER_ANTHROPIC = AnthropicProvider(
     id="anthropic",
     name="Anthropic",
@@ -154,11 +251,23 @@ PROVIDER_ANTHROPIC = AnthropicProvider(
     freeze_url=True,
 )
 
+PROVIDER_GEMINI = GeminiProvider(
+    id="gemini",
+    name="Google Gemini",
+    base_url="https://generativelanguage.googleapis.com",
+    api_key_prefix="",
+    models=GEMINI_MODELS,
+    chat_model="GeminiChatModel",
+    freeze_url=True,
+    support_model_discovery=True,
+)
+
 PROVIDER_OLLAMA = OllamaProvider(
     id="ollama",
     name="Ollama",
     require_api_key=False,
     support_model_discovery=True,
+    generate_kwargs={"max_tokens": None},
 )
 
 PROVIDER_LMSTUDIO = OpenAIProvider(
@@ -168,18 +277,8 @@ PROVIDER_LMSTUDIO = OpenAIProvider(
     require_api_key=False,
     api_key_prefix="",
     support_model_discovery=True,
+    generate_kwargs={"max_tokens": None},
 )
-
-
-class ModelSlotConfig(BaseModel):
-    provider_id: str = Field(
-        ...,
-        description="ID of the provider to use for this model slot",
-    )
-    model: str = Field(
-        ...,
-        description="ID of the model to use for this model slot",
-    )
 
 
 class ActiveModelsInfo(BaseModel):
@@ -225,7 +324,13 @@ class ProviderManager:
         self._add_builtin(PROVIDER_ALIYUN_CODINGPLAN)
         self._add_builtin(PROVIDER_OPENAI)
         self._add_builtin(PROVIDER_AZURE_OPENAI)
+        self._add_builtin(PROVIDER_KIMI_CN)
+        self._add_builtin(PROVIDER_KIMI_INTL)
+        self._add_builtin(PROVIDER_DEEPSEEK)
         self._add_builtin(PROVIDER_ANTHROPIC)
+        self._add_builtin(PROVIDER_GEMINI)
+        self._add_builtin(PROVIDER_MINIMAX_CN)
+        self._add_builtin(PROVIDER_MINIMAX)
         self._add_builtin(PROVIDER_OLLAMA)
         self._add_builtin(PROVIDER_LMSTUDIO)
         self._add_builtin(PROVIDER_LLAMACPP)
@@ -286,7 +391,7 @@ class ProviderManager:
             return []
         try:
             models = await provider.fetch_models()
-            provider.models = models
+            provider.extra_models = models
             self._save_provider(
                 provider,
                 is_builtin=provider_id in self.builtin_providers,
@@ -326,6 +431,9 @@ class ProviderManager:
         provider = self._provider_from_data(
             provider_payload,
         )  # Validate provider data
+        # For custom providers, we assume they don't support connection check
+        # without model config, to avoid false negatives in the UI.
+        provider.support_connection_check = False
         self.custom_providers[provider.id] = provider
         self._save_provider(provider, is_builtin=False)
         return await provider.get_info()
@@ -436,7 +544,9 @@ class ProviderManager:
 
         if provider_id == "anthropic" or chat_model == "AnthropicChatModel":
             return AnthropicProvider.model_validate(data)
-        if provider_id == "ollama" or chat_model == "OllamaChatModel":
+        if provider_id == "gemini" or chat_model == "GeminiChatModel":
+            return GeminiProvider.model_validate(data)
+        if provider_id == "ollama":
             return OllamaProvider.model_validate(data)
         if data.get("is_local", False):
             return DefaultProvider.model_validate(data)
@@ -541,10 +651,12 @@ class ProviderManager:
         for builtin in self.builtin_providers.values():
             provider = self.load_provider(builtin.id, is_builtin=True)
             if provider:
-                builtin.base_url = provider.base_url
+                # inherit user-configured base_url only when freeze_url=False
+                if not builtin.freeze_url:
+                    builtin.base_url = provider.base_url
                 builtin.api_key = provider.api_key
                 builtin.extra_models = provider.extra_models
-                builtin.generate_kwargs = provider.generate_kwargs
+                builtin.generate_kwargs.update(provider.generate_kwargs)
         # Load custom providers
         for provider_file in self.custom_path.glob("*.json"):
             provider = self.load_provider(provider_file.stem, is_builtin=False)
