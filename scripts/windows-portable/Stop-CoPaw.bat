@@ -10,9 +10,9 @@ for /f "tokens=5" %%P in ('netstat -ano ^| findstr /R /C:":%PORT% .*LISTENING"')
 )
 
 if "!FOUND!"=="0" (
-  echo [copaw] No process is listening on port %PORT%.
+  echo [qwenpaw] No process is listening on port %PORT%.
 ) else (
-  echo [copaw] Stopped process(es) on port %PORT%.
+  echo [qwenpaw] Stopped process(es) on port %PORT%.
 )
 
 endlocal

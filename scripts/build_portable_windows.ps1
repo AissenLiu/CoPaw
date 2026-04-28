@@ -49,13 +49,13 @@ if ($CleanOutput -and (Test-Path $OutputRoot)) {
 }
 New-Item -Path $OutputRoot -ItemType Directory -Force | Out-Null
 
-$env:COPAW_REPO_ROOT = $RepoRoot
+$env:QWENPAW_REPO_ROOT = $RepoRoot
 $VersionCode = @'
 import os
 import pathlib
 import re
 
-p = pathlib.Path(os.environ["COPAW_REPO_ROOT"]) / "src" / "copaw" / "__version__.py"
+p = pathlib.Path(os.environ["QWENPAW_REPO_ROOT"]) / "src" / "qwenpaw" / "__version__.py"
 text = p.read_text(encoding="utf-8")
 m = re.search(r'"([^"]+)"', text)
 print(m.group(1) if m else "")
@@ -68,7 +68,7 @@ $Version = $Version.Trim()
 
 $ConsoleDir = Join-Path $RepoRoot "console"
 $ConsoleDistDir = Join-Path $ConsoleDir "dist"
-$ConsolePackageDir = Join-Path $RepoRoot "src/copaw/console"
+$ConsolePackageDir = Join-Path $RepoRoot "src/qwenpaw/console"
 
 if (-not $SkipConsoleBuild) {
     Ensure-Command "npm"
@@ -109,7 +109,7 @@ finally {
     Pop-Location
 }
 
-$Wheel = Get-ChildItem -Path $WheelOutDir -Filter "copaw-*.whl" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+$Wheel = Get-ChildItem -Path $WheelOutDir -Filter "qwenpaw-*.whl" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
 if (-not $Wheel) {
     throw "No wheel found under $WheelOutDir"
 }
@@ -167,9 +167,9 @@ if (-not $SkipPlaywrightBrowserDownload) {
 }
 
 Write-Info "Initializing default working directory..."
-$env:COPAW_WORKING_DIR = $WorkingDir
-& $RuntimePythonExe -m copaw init --defaults --accept-security
-Assert-LastExitCode "copaw init --defaults --accept-security"
+$env:QWENPAW_WORKING_DIR = $WorkingDir
+& $RuntimePythonExe -m qwenpaw init --defaults --accept-security
+Assert-LastExitCode "qwenpaw init --defaults --accept-security"
 
 Write-Info "Applying offline-safe default config..."
 & $RuntimePythonExe -c @'
