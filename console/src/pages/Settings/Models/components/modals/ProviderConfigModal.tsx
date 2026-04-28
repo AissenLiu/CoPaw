@@ -6,6 +6,7 @@ import { ApiOutlined, DownOutlined, RightOutlined } from "@ant-design/icons";
 import type { ProviderConfigRequest } from "../../../../../api/types";
 import api from "../../../../../api";
 import { useTranslation } from "react-i18next";
+import { getLocalizedTestConnectionMessage } from "./testConnectionMessage";
 import styles from "../../index.module.less";
 
 interface ProviderConfigFormValues
@@ -321,6 +322,9 @@ export function ProviderConfigModal({
     if (provider.id === "openai") {
       return t("models.openAIEndpoint");
     }
+    if (provider.id === "opencode") {
+      return t("models.openAICompatibleEndpoint");
+    }
     if (provider.id === "ollama") {
       return t("models.ollamaEndpointHint");
     }
@@ -347,6 +351,9 @@ export function ProviderConfigModal({
     }
     if (provider.id === "openai") {
       return "https://api.openai.com/v1";
+    }
+    if (provider.id === "opencode") {
+      return "https://opencode.ai/zen/v1";
     }
     if (provider.id === "ollama") {
       return "http://localhost:11434";
@@ -397,7 +404,7 @@ export function ProviderConfigModal({
         });
 
         if (!result.success) {
-          message.error(result.message || t("models.testConnectionFailed"));
+          message.error(getLocalizedTestConnectionMessage(result, t));
           // For built-in providers, we want to enforce valid config before saving
           return;
         }
@@ -438,9 +445,9 @@ export function ProviderConfigModal({
         chat_model: values.chat_model,
       });
       if (result.success) {
-        message.success(result.message || t("models.testConnectionSuccess"));
+        message.success(getLocalizedTestConnectionMessage(result, t));
       } else {
-        message.warning(result.message || t("models.testConnectionFailed"));
+        message.warning(getLocalizedTestConnectionMessage(result, t));
       }
     } catch (error) {
       if (error && typeof error === "object" && "errorFields" in error) return;
@@ -493,6 +500,7 @@ export function ProviderConfigModal({
 
   return (
     <Modal
+      width={800}
       title={t("models.configureProvider", { name: provider.name })}
       open={open}
       onCancel={onClose}

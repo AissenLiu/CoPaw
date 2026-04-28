@@ -4,6 +4,9 @@ export interface ModelInfo {
   supports_multimodal: boolean | null;
   supports_image: boolean | null;
   supports_video: boolean | null;
+  probe_source?: string | null;
+  is_free?: boolean;
+  generate_kwargs: Record<string, unknown>;
 }
 
 export interface ProviderInfo {
@@ -74,6 +77,26 @@ export interface CreateCustomProviderRequest {
 export interface AddModelRequest {
   id: string;
   name: string;
+  is_free?: boolean;
+  supports_multimodal?: boolean | null;
+  supports_image?: boolean | null;
+  supports_video?: boolean | null;
+  probe_source?: string | null;
+}
+
+export interface ModelConfigRequest {
+  generate_kwargs?: Record<string, unknown>;
+}
+
+export interface LocalModelConfig {
+  max_context_length: number;
+  port: number | null;
+}
+
+export interface LocalModelConfigRequest {
+  max_context_length?: number;
+  port?: number | null;
+  generate_kwargs?: Record<string, unknown>;
 }
 
 /* ---- Local models ---- */
@@ -95,6 +118,10 @@ export interface LocalServerStatus {
   port: number | null;
   model_name: string | null;
   message: string | null;
+}
+
+export interface LocalServerUpdateStatus {
+  has_update: boolean;
 }
 
 export interface LocalDownloadProgress {
@@ -136,6 +163,7 @@ export interface TestProviderRequest {
   base_url?: string;
   chat_model?: string;
   generate_kwargs?: Record<string, unknown>;
+  include_extended?: boolean;
 }
 
 export interface TestModelRequest {
@@ -155,4 +183,45 @@ export interface ProbeMultimodalResponse {
   supports_multimodal: boolean;
   image_message: string;
   video_message: string;
+}
+
+/* ---- OpenRouter extended model types ---- */
+
+export interface ExtendedModelInfo {
+  id: string;
+  name: string;
+  supports_multimodal?: boolean | null;
+  supports_image?: boolean | null;
+  supports_video?: boolean | null;
+  probe_source?: string | null;
+  is_free?: boolean;
+  provider: string;
+  input_modalities: string[];
+  output_modalities: string[];
+  pricing: Record<string, string>;
+}
+
+export interface FilterModelsRequest {
+  providers?: string[];
+  input_modalities?: string[];
+  output_modalities?: string[];
+  max_prompt_price?: number;
+  is_free?: boolean;
+}
+
+export interface SeriesResponse {
+  series: string[];
+}
+
+export interface DiscoverExtendedResponse {
+  success: boolean;
+  models: ExtendedModelInfo[];
+  providers: string[];
+  total_count: number;
+}
+
+export interface FilterModelsResponse {
+  success: boolean;
+  models: ExtendedModelInfo[];
+  total_count: number;
 }

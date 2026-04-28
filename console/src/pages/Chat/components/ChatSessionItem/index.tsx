@@ -1,8 +1,20 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Input } from "antd";
 import { IconButton } from "@agentscope-ai/design";
-import { SparkEditLine, SparkDeleteLine } from "@agentscope-ai/icons";
-import { getChannelIconUrl } from "../../../Control/Channels/components";
+import {
+  SparkEditLine,
+  SparkDeleteLine,
+  SparkMarkLine,
+  SparkMarkFill,
+} from "@agentscope-ai/icons";
+import { useTranslation } from "react-i18next";
+import { ChannelIcon } from "../../../Control/Channels/components";
+import {
+  ContextMenu,
+  useContextMenu,
+  type ContextMenuItem,
+} from "../../../../components/ContextMenu";
+import type { ChatStatus } from "../../../../api/types/chat";
 import styles from "./index.module.less";
 
 interface ChatSessionItemProps {
@@ -14,18 +26,24 @@ interface ChatSessionItemProps {
   channelKey?: string;
   /** Localized channel label (e.g. Console, DingTalk) */
   channelLabel?: string;
+  chatStatus?: ChatStatus;
+  generating?: boolean;
   /** Whether this is the currently selected session */
   active?: boolean;
   /** Whether the item is in inline-edit mode */
   editing?: boolean;
   /** Current value of the edit input */
   editValue?: string;
+  /** Whether the chat is pinned */
+  pinned?: boolean;
   /** Click callback */
   onClick?: () => void;
   /** Edit button callback */
   onEdit?: () => void;
   /** Delete button callback */
   onDelete?: () => void;
+  /** Pin button callback */
+  onPin?: () => void;
   /** Edit input value change callback */
   onEditChange?: (value: string) => void;
   /** Confirm edit callback (Enter key or blur) */
@@ -36,10 +54,50 @@ interface ChatSessionItemProps {
 }
 
 const ChatSessionItem: React.FC<ChatSessionItemProps> = (props) => {
+  const { t } = useTranslation();
+  const contextMenu = useContextMenu();
+
+  const inProgress =
+    props.generating === true || props.chatStatus === "running";
+  const statusAriaLabel = inProgress
+    ? t("chat.statusInProgress")
+    : t("chat.statusIdle");
+
+  const contextMenuItems: ContextMenuItem[] = useMemo(
+    () => [
+      {
+        key: "open",
+        label: t("chat.contextMenu.open", "Open"),
+        onClick: props.onClick,
+      },
+      {
+        key: "rename",
+        label: t("chat.contextMenu.rename", "Rename"),
+        onClick: props.onEdit,
+      },
+      {
+        key: "pin",
+        label: props.pinned
+          ? t("chat.contextMenu.unpin", "Unpin")
+          : t("chat.contextMenu.pin", "Pin"),
+        onClick: props.onPin,
+      },
+      { key: "divider-1", label: "", divider: true },
+      {
+        key: "delete",
+        label: t("chat.contextMenu.delete", "Delete"),
+        danger: true,
+        onClick: props.onDelete,
+      },
+    ],
+    [t, props.onClick, props.onEdit, props.onPin, props.onDelete, props.pinned],
+  );
+
   const className = [
     styles.chatSessionItem,
     props.active ? styles.active : "",
     props.editing ? styles.editing : "",
+    props.pinned ? styles.pinned : "",
     props.className || "",
   ]
     .filter(Boolean)
@@ -49,6 +107,7 @@ const ChatSessionItem: React.FC<ChatSessionItemProps> = (props) => {
     <div
       className={className}
       onClick={props.editing ? undefined : props.onClick}
+      onContextMenu={props.editing ? undefined : contextMenu.show}
     >
       {/* Timeline indicator placeholder */}
       <div className={styles.iconPlaceholder} />
@@ -64,7 +123,21 @@ const ChatSessionItem: React.FC<ChatSessionItemProps> = (props) => {
             onClick={(e) => e.stopPropagation()}
           />
         ) : (
-          <div className={styles.name}>{props.name}</div>
+          <div className={styles.titleRow}>
+            <div
+              className={styles.statusWrap}
+              role="img"
+              aria-label={statusAriaLabel}
+            >
+              <span
+                className={`${styles.statusDot} ${
+                  inProgress ? styles.statusDotActive : styles.statusDotIdle
+                }`}
+                aria-hidden
+              />
+            </div>
+            <div className={styles.name}>{props.name}</div>
+          </div>
         )}
         <div className={styles.metaRow}>
           <span className={styles.time}>{props.time}</span>
@@ -74,13 +147,7 @@ const ChatSessionItem: React.FC<ChatSessionItemProps> = (props) => {
               title={props.channelLabel || props.channelKey}
             >
               {props.channelKey ? (
-                <img
-                  className={styles.channelIcon}
-                  src={getChannelIconUrl(props.channelKey)}
-                  alt=""
-                  loading="lazy"
-                  decoding="async"
-                />
+                <ChannelIcon channelKey={props.channelKey} size={14} />
               ) : null}
               {props.channelLabel ? (
                 <span className={styles.channelTagText}>
@@ -91,7 +158,21 @@ const ChatSessionItem: React.FC<ChatSessionItemProps> = (props) => {
           )}
         </div>
       </div>
-      {/* Action buttons visible on hover */}
+      {/* Pin button - always visible when pinned, positioned independently */}
+      {!props.editing && (
+        <IconButton
+          bordered={false}
+          size="small"
+          className={styles.pinButton}
+          data-pinned={props.pinned}
+          icon={props.pinned ? <SparkMarkFill /> : <SparkMarkLine />}
+          onClick={(e) => {
+            e.stopPropagation();
+            props.onPin?.();
+          }}
+        />
+      )}
+      {/* Action buttons - edit and delete, only visible on hover */}
       {!props.editing && (
         <div className={styles.actions}>
           <IconButton
@@ -114,6 +195,13 @@ const ChatSessionItem: React.FC<ChatSessionItemProps> = (props) => {
           />
         </div>
       )}
+      <ContextMenu
+        visible={contextMenu.visible}
+        x={contextMenu.x}
+        y={contextMenu.y}
+        items={contextMenuItems}
+        onClose={contextMenu.hide}
+      />
     </div>
   );
 };

@@ -25,9 +25,11 @@ export interface DingTalkConfig extends BaseChannelConfig {
   client_id: string;
   client_secret: string;
   message_type: string;
+  cron_message_type: string;
   card_template_id: string;
   card_template_key: string;
   robot_code: string;
+  at_sender_on_reply?: boolean;
 }
 
 export interface FeishuConfig extends BaseChannelConfig {
@@ -42,6 +44,7 @@ export interface FeishuConfig extends BaseChannelConfig {
 export interface QQConfig extends BaseChannelConfig {
   app_id: string;
   client_secret: string;
+  ack_message?: string;
 }
 
 export interface TelegramConfig extends BaseChannelConfig {
@@ -103,12 +106,52 @@ export interface VoiceChannelConfig extends BaseChannelConfig {
   welcome_greeting: string;
 }
 
+export interface SIPChannelConfig extends BaseChannelConfig {
+  sip_mode: string;
+  sip_host: string;
+  sip_port: number;
+  sip_username: string;
+  sip_password: string;
+  sip_server: string;
+  sip_transport: string;
+  rtp_port_low: number;
+  rtp_port_high: number;
+  dashscope_api_key: string;
+  tts_provider: string;
+  tts_voice: string;
+  stt_provider: string;
+  language: string;
+  welcome_greeting: string;
+  call_timeout: number;
+  livekit_url: string;
+  livekit_api_key: string;
+  livekit_api_secret: string;
+  livekit_sip_trunk_id: string;
+  livekit_room_name: string;
+}
+
 export interface XiaoYiConfig extends BaseChannelConfig {
   ak: string;
   sk: string;
   agent_id: string;
   ws_url: string;
   task_timeout_ms?: number;
+}
+
+export interface WeixinConfig extends BaseChannelConfig {
+  bot_token: string;
+  bot_token_file: string;
+  base_url: string;
+  media_dir?: string;
+  message_merge_enabled?: boolean;
+  message_merge_delay_ms?: number;
+}
+
+export interface OneBotConfig extends BaseChannelConfig {
+  ws_host: string;
+  ws_port: number;
+  access_token: string;
+  share_session_in_group: boolean;
 }
 
 export interface ChannelConfig {
@@ -124,7 +167,10 @@ export interface ChannelConfig {
   wecom: WecomConfig;
   console: ConsoleConfig;
   voice: VoiceChannelConfig;
+  sip: SIPChannelConfig;
   xiaoyi: XiaoYiConfig;
+  weixin: WeixinConfig;
+  onebot: OneBotConfig;
 }
 
 export type SingleChannelConfig =
@@ -139,5 +185,8 @@ export type SingleChannelConfig =
   | MatrixConfig
   | MattermostConfig
   | WecomConfig
+  | WeixinConfig
   | VoiceChannelConfig
-  | XiaoYiConfig;
+  | SIPChannelConfig
+  | XiaoYiConfig
+  | OneBotConfig;

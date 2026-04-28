@@ -62,7 +62,6 @@ function MCPPage() {
     createClient,
     updateClient,
   } = useMCP();
-  const [hoverKey, setHoverKey] = useState<string | null>(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [newClientJson, setNewClientJson] = useState(`{
   "mcpServers": {
@@ -181,7 +180,9 @@ function MCPPage() {
           <p>{t("common.loading")}</p>
         </div>
       ) : clients.length === 0 ? (
-        <Empty description={t("mcp.emptyState")} />
+        <div className={styles.emptyState}>
+          <Empty description={t("mcp.emptyState")} />
+        </div>
       ) : (
         <div className={styles.mcpGrid}>
           {clients.map((client) => (
@@ -191,9 +192,6 @@ function MCPPage() {
               onToggle={handleToggleEnabled}
               onDelete={handleDelete}
               onUpdate={updateClient}
-              isHovered={hoverKey === client.key}
-              onMouseEnter={() => setHoverKey(client.key)}
-              onMouseLeave={() => setHoverKey(null)}
             />
           ))}
         </div>
