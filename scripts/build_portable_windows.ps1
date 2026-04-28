@@ -177,7 +177,7 @@ import json
 import os
 from pathlib import Path
 
-root = Path(os.environ["COPAW_WORKING_DIR"])
+root = Path(os.environ["QWENPAW_WORKING_DIR"])
 config_path = root / "config.json"
 if config_path.exists():
     data = json.loads(config_path.read_text(encoding="utf-8"))
